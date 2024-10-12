@@ -20,6 +20,7 @@ from sklearn.metrics import accuracy_score
 from sklearn.preprocessing import StandardScaler
 import matplotlib.pyplot as plt
 import seaborn as sns
+from sklearn.metrics import classification_report, confusion_matrix, precision_score, recall_score, f1_score, accuracy_score
 
 
 url = 'https://blog.designcrowd.com/article/744/100-famous-corporate-logos-from-the-top-companies-of-2015'
@@ -192,7 +193,7 @@ X_train, X_test, y_train, y_test = train_test_split(
     random_state=42
 )
 
-# Build a simple CNN model
+# Build a CNN model
 model = models.Sequential([
     layers.Conv2D(32, (3, 3), activation='relu', input_shape=(224, 224, 3)),
     layers.MaxPooling2D((2, 2)),
@@ -201,70 +202,94 @@ model = models.Sequential([
     layers.Conv2D(64, (3, 3), activation='relu'),
     layers.Flatten(),
     layers.Dense(64, activation='relu'),
-    layers.Dense(len(label_encoder.classes_), activation='softmax')  # Output layer
+    layers.Dense(len(label_encoder.classes_), activation='softmax')
 ])
 
-# Compiling the model
-#using adam as the optimizer
+# Compile the model
 model.compile(optimizer='adam',
               loss='sparse_categorical_crossentropy',
               metrics=['accuracy'])
 
-# Training the model
+# Train the model
 model.fit(X_train, y_train, epochs=10, validation_data=(X_test, y_test))
 
-# Evaluating the model
+# Evaluate the CNN model
 test_loss, test_acc = model.evaluate(X_test, y_test)
-predictions = model.predict(X_test)
+print(f'\nCNN Test Accuracy: {test_acc}')
+
+# Predict on the test set
+y_pred_cnn = np.argmax(model.predict(X_test), axis=1)
+
+# Classification report and confusion matrix for CNN
+print("\nCNN Classification Report:")
+print(classification_report(y_test, y_pred_cnn))
+
+# Confusion Matrix for CNN
+print("\nCNN Confusion Matrix:")
+print(confusion_matrix(y_test, y_pred_cnn))
+
+# Additional Metrics for CNN
+precision_cnn = precision_score(y_test, y_pred_cnn, average='weighted')
+recall_cnn = recall_score(y_test, y_pred_cnn, average='weighted')
+f1_cnn = f1_score(y_test, y_pred_cnn, average='weighted')
+
+print(f"Precision (CNN): {precision_cnn}")
+print(f"Recall (CNN): {recall_cnn}")
+print(f"F1-Score (CNN): {f1_cnn}")
 
 #########################################################################################################################
 
 
 
-#Preprocessing
-def load_and_preprocess_image(url):
+# Preprocessing for SVM (flattening the images)
+def load_and_preprocess_image_svm(url):
     response = requests.get(url)
     img = Image.open(BytesIO(response.content))
-    img = img.resize((224, 224))  # Assuming you want to resize images to 224x224
+    img = img.resize((224, 224))
 
-   
     if img.mode != 'RGB':
         img = img.convert('RGB')
 
-    img_array = np.array(img).flatten()  
-    return img_array / 255.0  
+    img_array = np.array(img).flatten()
+    return img_array / 255.0
 
-X = np.vstack(df['Image Titles'].apply(load_and_preprocess_image).to_numpy())
+X_svm = np.vstack(df['Image Titles'].apply(load_and_preprocess_image_svm).to_numpy())
 
-# Using label encoder for encoding
-label_encoder = LabelEncoder()
-df['encoded_image_names'] = label_encoder.fit_transform(df.iloc[:, 0])
-y = df['encoded_image_names'].to_numpy()
+# Split data for SVM
+X_train_svm, X_test_svm, y_train_svm, y_test_svm = train_test_split(
+    X_svm, df['encoded_image_names'].to_numpy(), test_size=0.2, random_state=42)
 
-
-X_train, X_test, y_train, y_test = train_test_split(
-    X, y,
-    test_size=0.2,
-    random_state=42
-)
-
-
+# Scaling the data
 scaler = StandardScaler()
-X_train = scaler.fit_transform(X_train)
-X_test = scaler.transform(X_test)
+X_train_svm = scaler.fit_transform(X_train_svm)
+X_test_svm = scaler.transform(X_test_svm)
 
 # Building an SVM classifier
 svm_classifier = SVC(kernel='linear', C=1.0, random_state=42)
 
 # Training the classifier
-svm_classifier.fit(X_train, y_train)
+svm_classifier.fit(X_train_svm, y_train_svm)
 
-# Making predictions on the test set
-y_pred = svm_classifier.predict(X_test)
+# Predict on the test set with SVM
+y_pred_svm = svm_classifier.predict(X_test_svm)
 
-# Evaluating the model
-accuracy = accuracy_score(y_test, y_pred)
-print(f'Test accuracy: {accuracy+test}')
+# Accuracy and metrics for SVM
+accuracy_svm = accuracy_score(y_test_svm, y_pred_svm)
+precision_svm = precision_score(y_test_svm, y_pred_svm, average='weighted')
+recall_svm = recall_score(y_test_svm, y_pred_svm, average='weighted')
+f1_svm = f1_score(y_test_svm, y_pred_svm, average='weighted')
+
+print(f'\nSVM Test Accuracy: {accuracy_svm}')
+print(f"Precision (SVM): {precision_svm}")
+print(f"Recall (SVM): {recall_svm}")
+print(f"F1-Score (SVM): {f1_svm}")
+
+# Classification report and confusion matrix for SVM
+print("\nSVM Classification Report:")
+print(classification_report(y_test_svm, y_pred_svm))
+
+print("\nSVM Confusion Matrix:")
+print(confusion_matrix(y_test_svm, y_pred_svm))
 
 ########################################################################################################################
 
